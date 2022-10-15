@@ -9,6 +9,9 @@ const apiRoutes = require("./routes/api.js");
 const fccTestingRoutes = require("./routes/fcctesting.js");
 const runner = require("./test-runner");
 
+// DB connection
+const Thread = require("./mydb");
+
 const app = express();
 
 app.use("/public", express.static(process.cwd() + "/public"));
@@ -21,7 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Security
 app.use(
   helmet.frameguard("SAMEORIGIN"),
-  helmet.dnsPrefetchingControl(),
+  helmet.dnsPrefetchControl(),
   helmet.referrerPolicy({ policy: "origin" })
 );
 

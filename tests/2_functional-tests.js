@@ -52,7 +52,7 @@ Mocha.before(function (done) {
 });
 
 describe("Functional Tests", function () {
-  it("#1 - You can send a POST request to /api/threads/{board}.", function (done) {
+  it("#1 - Creating a new thread.", function (done) {
     chai
       .request(server)
       .post("/api/threads/test")
@@ -71,7 +71,7 @@ describe("Functional Tests", function () {
     done;
   });
 
-  it("Viewing the 10 most recent threads with 3 replies each", function (done) {
+  it("#2 - Viewing the 10 most recent threads with 3 replies each", function (done) {
     chai
       .request(server)
       .get("/api/threads/test")
@@ -99,10 +99,10 @@ describe("Functional Tests", function () {
           "Return's replies property should be 3 most recent replies!"
         );
       });
-      done
+    done;
   });
 
-  it("Reporting a thread", function (done) {
+  it("@3 - Reporting a thread", function (done) {
     chai
       .request(server)
       .put({
@@ -113,5 +113,133 @@ describe("Functional Tests", function () {
         assert.equal(res.status, 200);
         assert.equal(res.text, "reported");
       });
+    done;
   });
+
+  it("#4 - Creating a new reply", function (done) {
+    chai
+      .request(server)
+      .post("/api/replies/test")
+      .send({
+        text: "Ilorem ipsum dolor ...",
+        delete_password: "reply_delete_password",
+        thread_id: ObjectId("629d9d6bdd443a372130c09f"),
+        _id: ObjectId("629d9d6bdd443a372130c09c"),
+      })
+      .end(function (err, res) {
+        assert.equal(res.status, 200);
+      });
+    done;
+  });
+
+  it("#5 - Viewing a single thread with all replies", function (done) {
+    chai
+      .request(server)
+      .get(
+        "/api/replies/test?thread_id=" + ObjectId("629d9d6bdd443a372130c09f")
+      )
+      .send()
+      .end(function (err, res) {
+        assert.equal(res.status, 200);
+        assert.isArray(res.body[0], "Response should be an Array!");
+        assert.notProperty(
+          res.body[0],
+          "delete_password",
+          "delete_password shouldn't be send to the client!"
+        );
+        assert.notProperty(
+          res.body[0],
+          "reported",
+          "reported shouldn't be send to the client!"
+        );
+        assert.property(
+          res.body[0],
+          "_id",
+          "_id should be a property of different replies!"
+        );
+        assert.property(
+          res.body[0],
+          "text",
+          "text should be a property of different replies!"
+        );
+        assert.property(
+          res.body[0],
+          "created_on",
+          "created_on should be a property of different replies!"
+        );
+      });
+    done;
+  });
+
+  it("#6 - Reporting a reply", function (done) {
+    chai
+      .request(server)
+      .put("/api/replies/test")
+      .send({
+        thread_id: ObjectId("629d9d6bdd443a372130c09f"),
+        reply_id: ObjectId("629d9d6bdd443a372130c09c"),
+      })
+      .end(function (err, res) {
+        assert.equal(res.status, 200);
+        assert.equal(res.text, "reported");
+      });
+    done;
+  });
+
+  it("#7 - Deleting a reply with the incorrect password", function (done) {
+    chai
+      .request(server)
+      .delete("/api/replies/test")
+      .send({
+        thread_id: ObjectId("629d9d6bdd443a372130c09f"),
+        reply_id: ObjectId("629d9d6bdd443a372130c09c"),
+        delete_password: "wrong_delete_password",
+      })
+      .end(function (err, res) {
+        assert.equal(res.status, 200);
+        assert.equal(res.text, "incorrect password");
+      });
+    done;
+  });
+
+  it("#8 - Deleting a reply with the correct password", function (done) {
+    chai
+      .request(server)
+      .delete("/api/replies/test")
+      .send({
+        thread_id: ObjectId("629d9d6bdd443a372130c09f"),
+        reply_id: "629d9d6bdd443a372130c09c",
+        delete_password: "reply_delete_password"
+      })
+      .end(function (err, res) {
+        assert.equal(res.status, 200);
+        assert.equal(res.text, "success");
+      });
+    done;
+  });
+
+  it("#9 - Deleting a thread with the wrong password", function (done) {
+    chai
+      .request(server)
+      .delete("/api/threads/test")
+      .send({
+        thread_id: ObjectId("629d9d6bdd443a372130c09f"),
+        delete_password: "wrong_thread_delete_password",
+      })
+      .end(function (err, res) {
+        assert.equal(res.status, 200);
+        assert.equal(res.text, "incorrect password");
+      });
+    done;
+  });
+
+  it("#10 - Deleting a thread with the correct password", function(done) {
+    chai.request(server).delete("/api/thread/test").send({
+      thread_id: ObjectId("629d9d6bdd443a372130c09f"),
+      delete_password: "delete_password"
+    }).end(function(err, res) {
+      assert.equal(res.status, 200)
+      assert.equal(res.text, "success")
+    })
+  })
 });
