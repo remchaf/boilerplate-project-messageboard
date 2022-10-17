@@ -1,5 +1,8 @@
-// About threads
+const { ObjectId } = require("mongodb");
+
+//                  About threads
 async function createThread(collection, board, text, delete_password, _id) {
+  console.log("Mbayame Ndiaye");
   const date = new Date();
   const thread = await collection.create({
     _id: _id,
@@ -17,15 +20,18 @@ async function createThread(collection, board, text, delete_password, _id) {
 
 async function getThreads(collection, board) {
   // Get the threads from the collection
-  const threads = await collection.find({}).lean(true); // or .select('-reported -delete_password').lean(true);
+  let threads = await collection
+    .find({})
+    .select("-reported -delete_password -__v")
+    .lean(true);
 
   // Sort the threads regarding of their bumped_on value
   threads = threads
     .sort((thread1, thread2) => thread1.bumped_on - thread2.bumped_on)
-    .slice(10);
+    .slice(0, 10);
 
   // Clean out reported and delete_password from threads
-  return threads.reduce((thread, threadsArr) => {
+  return threads.reduce((threadsArr, thread) => {
     // Cleaning
     delete thread.reported;
     delete thread.delete_password;
@@ -43,32 +49,62 @@ async function getThreads(collection, board) {
 }
 
 async function reportThread(collection, board, thread_id) {
-  const thread = await collection.findOne({ board: board, _id: thread_id });
+  // Avoiding mongoose cast Error
+  try {
+    ObjectId(thread_id);
+  } catch (error) {
+    console.log("Invalid password");
+    return "Unreported";
+  }
 
-  if (thread) {
-    thread.reported = true;
-    await thread.save();
+  const thread = await collection.findOneAndUpdate(
+    { board: board, _id: ObjectId(thread_id) },
+    { reported: true }
+  );
+
+  if (!thread) {
+    console.log("Invalid password or No such thread !");
   }
   return "reported";
 }
 
 async function deleteThread(collection, board, thread_id, delete_password) {
-  const result = await collection.deleteOne({
-    board: board,
-    _id: thread_id,
-    delete_password: delete_password,
-  });
+  try {
+    const result = await collection.deleteOne({
+      board: board,
+      _id: thread_id,
+      delete_password: delete_password,
+    });
 
-  return result ? "success" : "incorrect password";
+    return result ? "success" : "incorrect password";
+  } catch {
+    return "No such Thread !";
+  }
 }
 
-// About replies
-async function createReply(collection, text, delete_password, thread_id, _id) {
-  // Considerd to be the comment's date
+//                        About replies
+
+async function createReply(
+  collection,
+  board,
+  thread_id,
+  text,
+  delete_password
+) {
+  // Considered to be the comment's date
   const date = new Date();
+  // thread_id validation
+  try {
+    ObjectId(thread_id);
+  } catch {
+    return "Invalid thread_id";
+  }
 
   // Find the thread in the db's collection using it's _id
-  const thread = await collection.findOne({ _id: thread_id });
+  const thread = await collection.findOne({
+    board: board,
+    _id: ObjectId(thread_id),
+  });
 
   // Creation of the reply in the replies array
   thread._doc.replies.push({
@@ -86,34 +122,51 @@ async function createReply(collection, text, delete_password, thread_id, _id) {
 }
 
 async function getReplies(collection, board, thread_id) {
-  const replies = await collection
-    .find({ board: board, _id: thread_id })
-    .select("replies");
-  replies = replies.replies;
+  // Id validation , otherwise going to throw a mongodb cast ERROR !
+  try {
+    ObjectId(thread_id);
+  } catch {
+    return "Invalid thread_id !";
+  }
 
-  return replies.reduce((reply, repliesArr) => {
-    // Filter out the unwanted fields to be sent to the client
-    delete reply.reported;
+  const { replies } = await collection
+    .findOne({ board: board, _id: ObjectId(thread_id) })
+    .lean(true)
+    .select("replies -_id");
+  replies.forEach((reply) => {
     delete reply.delete_password;
+    delete reply.reported;
+  });
 
-    repliesArr.push(reply);
-    return repliesArr;
-  }, []);
+  return replies;
 }
 
 async function reportReply(collection, board, thread_id, reply_id) {
-  const reply = await collection.findOne({ board: board, _id: thread_id });
+  const thread = await collection.findOneAndUpdate(
+    { board: board, _id: thread_id, "replies._id": reply_id },
+    { $set: { "replies.$.reported": true } }
+  );
 
-  if (reply) {
-    const replyIndex = reply.findIndex((reply) => reply._id == reply_id);
-    if (replyIndex == -1) {
-      return "No such reply";
-    }
+  console.log(thread);
 
-    reply[replyIndex].reported = true;
-    await reply.save();
-    return "reported";
-  }
+  // if (thread) {
+  //   const replyIndex = thread._doc.replies.findIndex(
+  //     (reply) => reply._id == reply_id
+  //   );
+  //   if (replyIndex == -1) {
+  //     return "No such reply";
+  //   }
+
+  //   thread._doc.replies[replyIndex].reported = true;
+  //   console.log(thread._doc.replies[replyIndex].reported);
+  // }
+  // await thread.save(function(err, result) {
+  //   if(err) {
+  //     console.log(err.message)
+  //   }
+  //   console.log(result)
+  // });
+  return "reported";
 }
 
 async function deleteReply(
