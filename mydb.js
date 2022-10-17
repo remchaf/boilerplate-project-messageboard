@@ -13,8 +13,10 @@ const threadSchema = new Schema({
   board: {
     type: String,
     required: true,
+    // unique: true
   },
   _id: Schema.Types.ObjectId,
+  text: String,
   created_on: {
     type: Date,
     default: Date.now,
@@ -28,7 +30,7 @@ const threadSchema = new Schema({
     default: false,
   },
   delete_password: String,
-  replies: [String],
+  replies: Array,
 });
 
 const Thread = mongoose.model("Thread", threadSchema);
