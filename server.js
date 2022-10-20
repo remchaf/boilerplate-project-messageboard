@@ -11,6 +11,9 @@ const runner = require("./test-runner");
 
 // DB connection
 const Thread = require("./mydb");
+// (async function () {
+//   await Thread.deleteMany({});
+// })();
 
 const app = express();
 

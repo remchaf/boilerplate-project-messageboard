@@ -3,6 +3,7 @@ require("mongodb");
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const express = require("express");
+const { ObjectId } = express;
 
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -10,12 +11,12 @@ mongoose.connect(process.env.MONGO_URI, {
 });
 
 const threadSchema = new Schema({
+  _id: mongoose.Types.ObjectId, // or Number or may be String - Or Object simply
   board: {
     type: String,
     required: true,
     // unique: true
   },
-  _id: Schema.Types.ObjectId,
   text: String,
   created_on: {
     type: Date,

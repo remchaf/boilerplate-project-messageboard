@@ -2,11 +2,10 @@ const { ObjectId } = require("mongodb");
 
 //                  About threads
 async function createThread(collection, board, text, delete_password, _id) {
-  console.log("Mbayame Ndiaye");
   const date = new Date();
   const thread = await collection.create({
-    _id: _id,
     text: text,
+    _id: _id,
     board: board,
     created_on: date,
     bumped_on: date,
@@ -15,37 +14,34 @@ async function createThread(collection, board, text, delete_password, _id) {
     replies: [],
   });
 
-  return thread;
+  return;
 }
 
 async function getThreads(collection, board) {
   // Get the threads from the collection
   let threads = await collection
-    .find({})
+    .find({ board: board })
     .select("-reported -delete_password -__v")
+    .sort("-bumped_on")
     .lean(true);
 
-  // Sort the threads regarding of their bumped_on value
-  threads = threads
-    .sort((thread1, thread2) => thread1.bumped_on - thread2.bumped_on)
+  return threads
+    .reduce((threadsArr, thread) => {
+      // Only taking the first three replies
+      thread.replies = thread.replies.slice(3);
+
+      // Clean out reported and delete_password from replies+
+      thread.replies.forEach((reply) => {
+        delete reply.delete_password;
+        delete reply.reported;
+      });
+
+      // Pushing the final thread to the result-array
+      threadsArr.push(thread);
+
+      return threadsArr;
+    }, [])
     .slice(0, 10);
-
-  // Clean out reported and delete_password from threads
-  return threads.reduce((threadsArr, thread) => {
-    // Cleaning
-    delete thread.reported;
-    delete thread.delete_password;
-
-    // Sort the replies by create_on date value
-    thread.replies = thread.replies
-      .sort((reply1, reply2) => reply1.created_on - reply2.created_on)
-      .slice(3);
-
-    // Only taking the first three replies
-    threadsArr.push(thread);
-
-    return threadsArr;
-  }, []);
 }
 
 async function reportThread(collection, board, thread_id) {
@@ -89,7 +85,8 @@ async function createReply(
   board,
   thread_id,
   text,
-  delete_password
+  delete_password,
+  _id
 ) {
   // Considered to be the comment's date
   const date = new Date();
@@ -108,8 +105,8 @@ async function createReply(
 
   // Creation of the reply in the replies array
   thread._doc.replies.push({
-    _id: _id,
     text: text,
+    _id: _id,
     created_on: date,
     delete_password: delete_password,
     reported: false,
@@ -118,7 +115,9 @@ async function createReply(
   thread.bumped_on = date;
 
   // Save the updated thread
-  return await thread.save();
+  return await thread.save(function (err, result) {
+    return;
+  });
 }
 
 async function getReplies(collection, board, thread_id) {
@@ -142,30 +141,25 @@ async function getReplies(collection, board, thread_id) {
 }
 
 async function reportReply(collection, board, thread_id, reply_id) {
-  const thread = await collection.findOneAndUpdate(
-    { board: board, _id: thread_id, "replies._id": reply_id },
-    { $set: { "replies.$.reported": true } }
-  );
+  const thread = await collection.findOne({ board: board, _id: thread_id });
 
-  console.log(thread);
+  // console.log(thread);
 
-  // if (thread) {
-  //   const replyIndex = thread._doc.replies.findIndex(
-  //     (reply) => reply._id == reply_id
-  //   );
-  //   if (replyIndex == -1) {
-  //     return "No such reply";
-  //   }
+  if (thread) {
+    const replyIndex = thread._doc.replies.findIndex(
+      (reply) => reply._id == reply_id
+    );
+    if (replyIndex == -1) {
+      return "No such reply";
+    }
 
-  //   thread._doc.replies[replyIndex].reported = true;
-  //   console.log(thread._doc.replies[replyIndex].reported);
-  // }
-  // await thread.save(function(err, result) {
-  //   if(err) {
-  //     console.log(err.message)
-  //   }
-  //   console.log(result)
-  // });
+    thread._doc.replies[replyIndex].reported = true;
+    console.log(thread._doc.replies[replyIndex].reported);
+  }
+  await thread.save(function (err, result) {
+    return;
+  });
+
   return "reported";
 }
 
