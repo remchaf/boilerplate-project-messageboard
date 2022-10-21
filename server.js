@@ -11,9 +11,6 @@ const runner = require("./test-runner");
 
 // DB connection
 const Thread = require("./mydb");
-// (async function () {
-//   await Thread.deleteMany({});
-// })();
 
 const app = express();
 
@@ -30,6 +27,14 @@ app.use(
   helmet.dnsPrefetchControl(),
   helmet.referrerPolicy({ policy: "origin" })
 );
+
+// Route to remove test and board documents from the thread-collection
+app.get("/delete", async function (req, res) {
+  const result = await Thread.deleteMany({
+    board: { $regex: /test|[board.*]/},
+  });
+  res.type("text").send("Collection emptied !");
+});
 
 //Sample front-end
 app.route("/b/:board/").get(function (req, res) {

@@ -131,7 +131,7 @@ async function getReplies(collection, board, thread_id) {
   const { replies } = await collection
     .findOne({ board: board, _id: ObjectId(thread_id) })
     .lean(true)
-    .select("replies -_id");
+    .select("replies");
   replies.forEach((reply) => {
     delete reply.delete_password;
     delete reply.reported;
@@ -153,8 +153,9 @@ async function reportReply(collection, board, thread_id, reply_id) {
       return "No such reply";
     }
 
-    thread._doc.replies[replyIndex].reported = true;
-    console.log(thread._doc.replies[replyIndex].reported);
+    const newReply = Object.assign({}, thread._doc.replies[replyIndex]);
+    newReply.reported = true;
+    thread.replies[replyIndex] = newReply;
   }
   await thread.save(function (err, result) {
     return;

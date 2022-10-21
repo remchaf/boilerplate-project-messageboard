@@ -1,3 +1,4 @@
 /node_modules/
 .env
 Instructions.txt
+controllers*

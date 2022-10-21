@@ -18,10 +18,14 @@ module.exports = function (app) {
     .post(async function (req, res) {
       const { board } = req.params;
       const { text, delete_password, _id } = req.body;
-      const ID = _id || ObjectId()
+      const ID = _id || ObjectId();
 
       await createThread(Thread, board, text, delete_password, ID);
 
+      if (_id) {
+        res.type("text").send("OK");
+        return
+      }
       res.redirect(302, "/b/" + board);
     })
     .get(async function (req, res) {
@@ -30,7 +34,7 @@ module.exports = function (app) {
       res.json(result);
     })
     .put(async function (req, res) {
-      const { board,thread_id } = req.body;
+      const { board, thread_id } = req.body;
 
       const result = await reportThread(Thread, board, thread_id);
       res.type("text").send(result);
@@ -44,8 +48,8 @@ module.exports = function (app) {
         board,
         thread_id,
         delete_password
-      ); 
-      res.type("text").send(result); 
+      );
+      res.type("text").send(result);
     });
 
   app
@@ -53,14 +57,14 @@ module.exports = function (app) {
     .post(async function (req, res) {
       const { board } = req.params;
       const { text, delete_password, thread_id, _id } = req.body;
-      const ID = _id || ObjectId()
+      const ID = _id || ObjectId();
 
       await createReply(Thread, board, thread_id, text, delete_password, ID);
 
       res.redirect("/");
     })
-    .get( async function (req, res) {
-      const { board } = req.params; 
+    .get(async function (req, res) {
+      const { board } = req.params;
       const { thread_id } = req.query;
 
       const result = await getReplies(Thread, board, thread_id);
