@@ -24,7 +24,7 @@ module.exports = function (app) {
 
       if (_id) {
         res.type("text").send("OK");
-        return
+        return;
       }
       res.redirect(302, "/b/" + board);
     })
@@ -34,7 +34,8 @@ module.exports = function (app) {
       res.json(result);
     })
     .put(async function (req, res) {
-      const { board, thread_id } = req.body;
+      const { board } = req.params;
+      const { thread_id } = req.body;
 
       const result = await reportThread(Thread, board, thread_id);
       res.type("text").send(result);
@@ -61,7 +62,7 @@ module.exports = function (app) {
 
       await createReply(Thread, board, thread_id, text, delete_password, ID);
 
-      res.redirect("/");
+      res.redirect("/b/" + board);
     })
     .get(async function (req, res) {
       const { board } = req.params;

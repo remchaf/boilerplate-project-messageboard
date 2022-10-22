@@ -72,7 +72,7 @@ async function deleteThread(collection, board, thread_id, delete_password) {
       delete_password: delete_password,
     });
 
-    return result ? "success" : "incorrect password";
+    return result.deleteCount ? "success" : "incorrect password";
   } catch {
     return "No such Thread !";
   }
@@ -104,13 +104,19 @@ async function createReply(
   });
 
   // Creation of the reply in the replies array
-  thread._doc.replies.push({
-    text: text,
-    _id: _id,
-    created_on: date,
-    delete_password: delete_password,
-    reported: false,
-  });
+  try {
+    thread._doc.replies.push({
+      text: text,
+      _id: _id,
+      created_on: date,
+      delete_password: delete_password,
+      reported: false,
+    });
+  } catch {
+    return "No such thread !";
+  }
+
+  thread.$isNew = true;
 
   thread.bumped_on = date;
 
@@ -128,10 +134,10 @@ async function getReplies(collection, board, thread_id) {
     return "Invalid thread_id !";
   }
 
-  const { replies } = await collection
+  const thread = await collection
     .findOne({ board: board, _id: ObjectId(thread_id) })
-    .lean(true)
-    .select("replies");
+    .lean(true);
+  const { replies } = thread;
   replies.forEach((reply) => {
     delete reply.delete_password;
     delete reply.reported;
@@ -143,8 +149,6 @@ async function getReplies(collection, board, thread_id) {
 async function reportReply(collection, board, thread_id, reply_id) {
   const thread = await collection.findOne({ board: board, _id: thread_id });
 
-  // console.log(thread);
-
   if (thread) {
     const replyIndex = thread._doc.replies.findIndex(
       (reply) => reply._id == reply_id
@@ -153,9 +157,11 @@ async function reportReply(collection, board, thread_id, reply_id) {
       return "No such reply";
     }
 
-    const newReply = Object.assign({}, thread._doc.replies[replyIndex]);
-    newReply.reported = true;
-    thread.replies[replyIndex] = newReply;
+    // const newReply = Object.assign({}, thread._doc.replies[replyIndex]);
+    // newReply.reported = true;
+    // thread.replies[replyIndex] = newReply;
+    thread.replies[replyIndex].reported = true;
+    thread.$__.$isNew = true;
   }
   await thread.save(function (err, result) {
     return;

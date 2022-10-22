@@ -30,9 +30,7 @@ app.use(
 
 // Route to remove test and board documents from the thread-collection
 app.get("/delete", async function (req, res) {
-  const result = await Thread.deleteMany({
-    board: { $regex: /test|[board.*]/},
-  });
+  await Thread.deleteMany({ board: "test" });
   res.type("text").send("Collection emptied !");
 });
 
