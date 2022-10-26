@@ -61,7 +61,7 @@ async function reportThread(collection, board, thread_id) {
 
   if (!thread) {
     console.log(
-      "Trying to report thread:\n\r\r board:" +
+      "Trying to report thread:\n\r\r board: " +
         board +
         "\n  _id: " +
         thread_id +
@@ -189,13 +189,13 @@ async function deleteReply(
   reply_id,
   delete_password
 ) {
-  const result = await collection.findOne({ board: board, _id: thread_id });
+  const thread = await collection.findOne({ board: board, _id: thread_id });
 
-  if (!result) {
+  if (!thread) {
     return "No such thread";
   }
 
-  const replies = result._doc.replies;
+  const replies = thread._doc.replies;
   const indx = replies.findIndex(
     (reply) => reply._id == reply_id && reply.delete_password == delete_password
   );
@@ -204,7 +204,8 @@ async function deleteReply(
   }
 
   replies[indx].text = "[deleted]";
-  await result.save();
+  thread.markModified("replies");
+  await thread.save();
   return "success";
 }
 

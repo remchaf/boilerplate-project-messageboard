@@ -36,7 +36,7 @@ module.exports = function (app) {
     .put(async function (req, res) {
       const { board } = req.params;
       let { thread_id } = req.body;
-      thread_id = thread_id || req.body._id
+      thread_id = thread_id || req.body.report_id
 
       const result = await reportThread(Thread, board, thread_id);
       res.type("text").send(result);
