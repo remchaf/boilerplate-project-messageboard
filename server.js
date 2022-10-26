@@ -25,13 +25,38 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(
   helmet.frameguard("SAMEORIGIN"),
   helmet.dnsPrefetchControl(),
-  helmet.referrerPolicy({ policy: "origin" })
+  helmet.referrerPolicy({ policy: "same-origin" })
 );
 
 // Route to remove test and board documents from the thread-collection
 app.get("/delete", async function (req, res) {
-  await Thread.deleteMany({ board: "test" });
-  res.type("text").send("Collection emptied !");
+  await Thread.deleteOne({ board: "test", _id: "6350176b1a1a5824674bd54f" });
+  res.type("text").send("'Test #1' board deleted from Thread collection !");
+});
+
+// Setting up the db for testing purpose
+app.get("/after_tests", async function (req, res) {
+  // Delete the thread created in test #1
+  await Thread.findOneAndDelete({ _id: "6350176b1a1a5824674bd54f" });
+
+  // Create thread for test #5 && #10
+  const _date1 = new Date();
+  try {
+    setTimeout(async () => {
+      await createTestThread(_date1);
+    }, 5000);
+  } catch {
+    return console.log("Test thread not created ! -> server.js line:51");
+  }
+
+  res.type("text").send("Test ready to go !");
+});
+
+// Delete fcc-test boards before next test ** To be deleted after
+app.get("/fcc", async function (req, res) {
+  const result = await Thread.deleteMany({ board: "fcc_test" });
+  console.log(result);
+  res.type("text").send("OK!");
 });
 
 //Sample front-end
@@ -75,3 +100,30 @@ const listener = app.listen(process.env.PORT || 3000, function () {
 });
 
 module.exports = app; //for testing
+
+async function createTestThread(_date1) {
+  await Thread.replaceOne(
+    { _id: "6350176b1a1a5824674bd64e" },
+    {
+      _id: "6350176b1a1a5824674bd64e",
+      board: "test",
+      text: " Just some random text [...] ",
+      created_on: _date1,
+      bumped_on: _date1,
+      delete_password: "delete_password",
+      reported: false,
+      replies: [
+        {
+          _id: "629d9d6bdd443a372130c09c",
+          text: "Ilorem ipsum dolor [...] ",
+          created_on: new Date(),
+          delete_password: "reply_delete_password",
+          reported: false,
+        },
+      ],
+    },
+    { upsert: true }
+  );
+
+  return "Created !";
+}
