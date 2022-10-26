@@ -21,7 +21,7 @@ describe("Functional Tests", function () {
   });
 
   beforeEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     console.log("----------------------");
   });
 
