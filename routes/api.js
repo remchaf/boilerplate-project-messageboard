@@ -22,10 +22,10 @@ module.exports = function (app) {
 
       await createThread(Thread, board, text, delete_password, ID);
 
-      if (_id) {
-        res.type("text").send("OK");
-        return;
-      }
+      // if (_id) {
+      //   res.type("text").send("OK");
+      //   return;
+      // }
       res.redirect(302, "/b/" + board);
     })
     .get(async function (req, res) {
@@ -35,7 +35,8 @@ module.exports = function (app) {
     })
     .put(async function (req, res) {
       const { board } = req.params;
-      const { thread_id } = req.body;
+      let { thread_id } = req.body;
+      thread_id = thread_id || req.body._id
 
       const result = await reportThread(Thread, board, thread_id);
       res.type("text").send(result);
