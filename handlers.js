@@ -1,3 +1,4 @@
+"use strict";
 const { ObjectId } = require("mongodb");
 
 //                  About threads
@@ -28,7 +29,7 @@ async function getThreads(collection, board) {
   return threads
     .reduce((threadsArr, thread) => {
       // Only taking the first three replies
-      thread.replies = thread.replies.slice(3);
+      thread.replies = thread.replies.slice(0, 3);
 
       // Clean out reported and delete_password from replies+
       thread.replies.forEach((reply) => {
@@ -59,22 +60,32 @@ async function reportThread(collection, board, thread_id) {
   );
 
   if (!thread) {
-    console.log("Invalid password or No such thread !");
+    console.log(
+      "Trying to report thread:\n\r\r board:" +
+        board +
+        "\n  _id: " +
+        thread_id +
+        "\nInvalid password or No such thread !"
+    );
   }
   return "reported";
 }
 
 async function deleteThread(collection, board, thread_id, delete_password) {
-  try {
-    const result = await collection.deleteOne({
-      board: board,
-      _id: thread_id,
-      delete_password: delete_password,
-    });
+  const thread = await collection.findOne({
+    board: board,
+    _id: thread_id,
+  });
 
-    return result.deleteCount ? "success" : "incorrect password";
-  } catch {
-    return "No such Thread !";
+  if (!thread) {
+    return "No such thread!";
+  } else if (thread._doc.delete_password != delete_password) {
+    return "incorrect password";
+  }
+
+  const result = await thread.remove();
+  if (result) {
+    return "success";
   }
 }
 
@@ -105,25 +116,24 @@ async function createReply(
 
   // Creation of the reply in the replies array
   try {
-    thread._doc.replies.push({
+    const new_reply = {
       text: text,
       _id: _id,
       created_on: date,
       delete_password: delete_password,
       reported: false,
-    });
+    };
+    thread._doc.replies.push(new_reply);
+
+    thread.bumped_on = date;
+    thread.markModified("replies");
+
+    // Save the updated thread
+
+    return await thread.save();
   } catch {
     return "No such thread !";
   }
-
-  thread.$isNew = true;
-
-  thread.bumped_on = date;
-
-  // Save the updated thread
-  return await thread.save(function (err, result) {
-    return;
-  });
 }
 
 async function getReplies(collection, board, thread_id) {
@@ -137,13 +147,18 @@ async function getReplies(collection, board, thread_id) {
   const thread = await collection
     .findOne({ board: board, _id: ObjectId(thread_id) })
     .lean(true);
-  const { replies } = thread;
-  replies.forEach((reply) => {
+  // const replies = thread.replies;
+  if (!thread) {
+    return "No such thread !";
+  }
+  thread.replies.forEach((reply) => {
     delete reply.delete_password;
     delete reply.reported;
   });
+  delete thread.reported;
+  delete thread.delete_password;
 
-  return replies;
+  return thread;
 }
 
 async function reportReply(collection, board, thread_id, reply_id) {
@@ -157,11 +172,8 @@ async function reportReply(collection, board, thread_id, reply_id) {
       return "No such reply";
     }
 
-    // const newReply = Object.assign({}, thread._doc.replies[replyIndex]);
-    // newReply.reported = true;
-    // thread.replies[replyIndex] = newReply;
     thread.replies[replyIndex].reported = true;
-    thread.$__.$isNew = true;
+    thread.markModified("replies");
   }
   await thread.save(function (err, result) {
     return;
@@ -183,7 +195,7 @@ async function deleteReply(
     return "No such thread";
   }
 
-  const replies = result.replies;
+  const replies = result._doc.replies;
   const indx = replies.findIndex(
     (reply) => reply._id == reply_id && reply.delete_password == delete_password
   );
@@ -191,7 +203,7 @@ async function deleteReply(
     return "incorrect password";
   }
 
-  replies[indx] = "deleted";
+  replies[indx].text = "[deleted]";
   await result.save();
   return "success";
 }
