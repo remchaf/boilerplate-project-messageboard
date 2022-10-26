@@ -80,7 +80,7 @@ module.exports = function (app) {
 
 function testFilter(tests, type, n) {
   var out;
-  switch (type) {
+  switch (type) { // May have to apply .toLowerCase() to the type paramater
     case 'unit' :
       out = tests.filter(t => t.context.match('Unit Tests'));
       break;
